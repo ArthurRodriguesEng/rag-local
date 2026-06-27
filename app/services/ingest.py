@@ -1,0 +1,1 @@
+#Arquivo responsável por ingestão de dados e leitura dos arquivos.

@@ -1,0 +1,1 @@
+#Arquivo responsável por transformar textos em vetores.
