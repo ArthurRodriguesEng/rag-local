@@ -1,1 +1,0 @@
-#Centralizar todas as operações de leitura e escrita dos dados.
