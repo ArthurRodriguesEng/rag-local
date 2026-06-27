@@ -6,8 +6,10 @@ disable =
       C0116,  # missing-function-docstring
       W0703,  # broad-except
       C0209,  # formatting-in-string
-      C0312,  # too-many-blank-lines
       W0221,  # arguments-differ
+      C0103,  # ungrouped-imports
+      W0107, # unnecessary-pass
+      R0903,  # too-few-public-methods
 
 
 # Analyse import fallback blocks. This can be used to support both Python 2 and

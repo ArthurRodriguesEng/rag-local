@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -9,7 +11,6 @@ engine = create_engine(
     pool_pre_ping=True,
 )
 
-
 SessionLocal = sessionmaker(
     bind=engine,
     autoflush=False,
@@ -17,7 +18,6 @@ SessionLocal = sessionmaker(
 )
 
 
+@dataclass
 class Base(DeclarativeBase):
     """Classe base para todos os modelos ORM."""
-
-    pass
