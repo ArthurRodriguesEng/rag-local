@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -18,6 +16,7 @@ SessionLocal = sessionmaker(
 )
 
 
-@dataclass
 class Base(DeclarativeBase):
     """Classe base para todos os modelos ORM."""
+
+    pass

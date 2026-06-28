@@ -1,0 +1,5 @@
+Python é uma linguagem de programação muito usada em automação, inteligência artificial e desenvolvimento web.
+
+Em um sistema RAG, documentos são divididos em chunks, transformados em embeddings e armazenados em um banco vetorial.
+
+Depois, quando o usuário faz uma pergunta, o sistema busca os chunks mais relevantes e envia esse contexto para um modelo de linguagem.

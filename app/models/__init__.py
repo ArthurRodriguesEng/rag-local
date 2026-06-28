@@ -1,9 +1,7 @@
-from .document import Document
-
-# from .chunk import Chunk
+from app.models.document import Document
+from app.models.chunk import Chunk
 
 __all__ = [
     "Document",
     "Chunk",
 ]
-# quanto alguem usar o from app.models import * ele vai importar apenas o que esta na lista __all__
