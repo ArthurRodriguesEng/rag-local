@@ -26,7 +26,6 @@ from app.utils import logger
 class ChatOverrides:
     """Sobrescritas opcionais de chat recebidas pela CLI."""
 
-    provider: str | None = None
     model: str | None = None
 
 
@@ -39,6 +38,8 @@ class RagOverrides:
     system_prompt: str | None = None
     empty_context_message: str | None = None
     response_mode: str | None = None
+    memory_limit: int | None = None
+    memory_max_chars: int | None = None
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,8 @@ class ChatLoopOptions:
     chat: ChatOverrides = field(default_factory=ChatOverrides)
     embedding_model: str | None = None
     response_mode: str | None = None
+    memory_limit: int | None = None
+    memory_max_chars: int | None = None
 
 
 def init_db() -> None:
@@ -186,7 +189,6 @@ def ask_question(
         selected_embedding_model = (
             options.rag.embedding_model or profile.embedding_model
         )
-        selected_chat_provider = options.chat.provider or profile.chat_provider
         selected_chat_model = options.chat.model or profile.chat_model
         service_config = build_rag_config(
             profile=profile,
@@ -194,14 +196,17 @@ def ask_question(
             system_prompt=options.rag.system_prompt,
             empty_context_message=options.rag.empty_context_message,
             response_mode=options.rag.response_mode,
+            memory_limit=options.rag.memory_limit,
+            memory_max_chars=options.rag.memory_max_chars,
         )
 
         logger.debug(
-            f"Perfil RAG: {profile.name}; provider={selected_chat_provider}; "
-            f"chat_model={selected_chat_model}; "
+            f"Perfil RAG: {profile.name}; chat_model={selected_chat_model}; "
             f"embedding_model={selected_embedding_model}; "
             f"limit={service_config.retrieval.limit}; "
-            f"response_mode={service_config.prompt.response_mode}"
+            f"response_mode={service_config.prompt.response_mode}; "
+            f"memory_limit={service_config.conversation.memory_limit}; "
+            f"memory_max_chars={service_config.conversation.memory_max_chars}"
         )
 
         service = RagService(
@@ -209,7 +214,6 @@ def ask_question(
             dependencies=build_rag_dependencies(
                 session=session,
                 embedding_model=selected_embedding_model,
-                chat_provider=selected_chat_provider,
                 chat_model=selected_chat_model,
             ),
             config=service_config,
@@ -245,12 +249,11 @@ def ask_question(
             session.rollback()
             logger.warning(str(error))
 
-            if selected_chat_provider == "ollama":
-                print("\nVerifique o modelo local no Ollama:\n")
-                print("docker exec -it rag-ollama ollama list")
-                print(f"docker exec -it rag-ollama ollama pull {selected_chat_model}")
-                print("\nSe o prompt estiver grande para o modelo, tente reduzir o contexto:")
-                print('python -m app.cli ask "sua pergunta" --limit 3')
+            print("\nVerifique o modelo local no Ollama:\n")
+            print("docker exec -it rag-ollama ollama list")
+            print(f"docker exec -it rag-ollama ollama pull {selected_chat_model}")
+            print("\nSe o prompt estiver grande para o modelo, tente reduzir o contexto:")
+            print('python -m app.cli ask "sua pergunta" --limit 3')
 
             return None
 
@@ -313,6 +316,8 @@ def chat_loop(
                         limit=options.limit,
                         embedding_model=options.embedding_model,
                         response_mode=options.response_mode,
+                        memory_limit=options.memory_limit,
+                        memory_max_chars=options.memory_max_chars,
                     ),
                     conversation=ConversationOptions(
                         conversation_id=conversation_id,
@@ -419,17 +424,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Quantidade máxima de chunks usados como contexto.",
     )
     ask_parser.add_argument(
-        "--chat-provider",
-        type=str,
-        choices=["ollama", "openai"],
-        default=None,
-        help="Provedor de chat usado nesta pergunta.",
-    )
-    ask_parser.add_argument(
         "--chat-model",
         type=str,
         default=None,
-        help="Modelo de chat usado nesta pergunta.",
+        help="Modelo local do Ollama usado nesta pergunta.",
     )
     ask_parser.add_argument(
         "--embedding-model",
@@ -462,6 +460,18 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["concise", "analytical", "deep"],
         default=None,
         help="Nível de profundidade da resposta.",
+    )
+    ask_parser.add_argument(
+        "--memory-limit",
+        type=int,
+        default=None,
+        help="Quantidade de mensagens recentes usadas como memória.",
+    )
+    ask_parser.add_argument(
+        "--memory-max-chars",
+        type=int,
+        default=None,
+        help="Limite de caracteres da memória enviada ao prompt.",
     )
     ask_parser.add_argument(
         "--conversation-id",
@@ -500,23 +510,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="Quantidade máxima de chunks usados como contexto.",
     )
     chat_parser.add_argument(
-        "--chat-provider",
-        type=str,
-        choices=["ollama", "openai"],
-        default=None,
-        help="Provedor de chat usado nesta conversa.",
-    )
-    chat_parser.add_argument(
         "--chat-model",
         type=str,
         default=None,
-        help="Modelo de chat usado nesta conversa.",
+        help="Modelo local do Ollama usado nesta conversa.",
     )
     chat_parser.add_argument(
         "--embedding-model",
         type=str,
         default=None,
         help="Modelo de embedding usado nesta conversa.",
+    )
+    chat_parser.add_argument(
+        "--memory-limit",
+        type=int,
+        default=None,
+        help="Quantidade de mensagens recentes usadas como memória.",
+    )
+    chat_parser.add_argument(
+        "--memory-max-chars",
+        type=int,
+        default=None,
+        help="Limite de caracteres da memória enviada ao prompt.",
     )
 
     subparsers.add_parser(
@@ -593,7 +608,6 @@ def _handle_ask(args: argparse.Namespace, _parser: argparse.ArgumentParser) -> N
         options=AskOptions(
             profile_name=args.profile,
             chat=ChatOverrides(
-                provider=args.chat_provider,
                 model=args.chat_model,
             ),
             rag=RagOverrides(
@@ -602,6 +616,8 @@ def _handle_ask(args: argparse.Namespace, _parser: argparse.ArgumentParser) -> N
                 system_prompt=args.system_prompt,
                 empty_context_message=args.empty_context_message,
                 response_mode=args.response_mode,
+                memory_limit=args.memory_limit,
+                memory_max_chars=args.memory_max_chars,
             ),
             conversation=ConversationOptions(
                 conversation_id=args.conversation_id,
@@ -619,11 +635,12 @@ def _handle_chat(args: argparse.Namespace, _parser: argparse.ArgumentParser) -> 
             profile_name=args.profile,
             limit=args.limit,
             chat=ChatOverrides(
-                provider=args.chat_provider,
                 model=args.chat_model,
             ),
             embedding_model=args.embedding_model,
             response_mode=args.response_mode,
+            memory_limit=args.memory_limit,
+            memory_max_chars=args.memory_max_chars,
         ),
     )
 
@@ -645,11 +662,11 @@ def _handle_profiles(
 
     for profile in PROFILES.values():
         print(
-            f"{profile.name} | provider={profile.chat_provider} | "
-            f"chat={profile.chat_model} | "
+            f"{profile.name} | chat={profile.chat_model} | "
             f"embedding={profile.embedding_model} | "
             f"limit={profile.retrieval_limit} | "
             f"contexto={profile.max_context_chars} | "
+            f"memoria={profile.memory_limit}/{profile.memory_max_chars} | "
             f"modo={profile.response_mode}"
         )
 

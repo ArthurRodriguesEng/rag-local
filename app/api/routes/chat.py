@@ -24,13 +24,14 @@ def chat(
     dependencies = build_rag_dependencies(
         session=session,
         embedding_model=profile.embedding_model,
-        chat_provider=profile.chat_provider,
         chat_model=profile.chat_model,
     )
     config = build_rag_config(
         profile=profile,
         limit=request.retrieval_limit,
         response_mode=request.response_mode,
+        memory_limit=request.memory_limit,
+        memory_max_chars=request.memory_max_chars,
     )
     service = RagService(
         session=session,

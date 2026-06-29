@@ -32,19 +32,8 @@ class EmbeddingService:
             f"Gerando embedding com modelo {self.embedding_model}; "
             f"caracteres={len(text)}"
         )
-        response = requests.post(
-            f"{self.ollama_url}/api/embed",
-            json={
-                "model": self.embedding_model,
-                "input": text,
-            },
-            timeout=self.timeout_seconds,
-        )
-
-        response.raise_for_status()
-
-        data = response.json()
-        embedding = data["embeddings"][0]
+        data = self._request_embedding(text)
+        embedding = self._extract_embedding(data)
 
         if len(embedding) != self.expected_dimension:
             raise ValueError(
@@ -55,3 +44,48 @@ class EmbeddingService:
 
         logger.debug(f"Embedding gerado com {len(embedding)} dimensões.")
         return embedding
+
+    def _request_embedding(self, text: str) -> dict:
+        """Consulta o Ollama usando as rotas suportadas pela versão em uso."""
+
+        payload = {
+            "model": self.embedding_model,
+            "input": text,
+        }
+        fallback_payload = {
+            "model": self.embedding_model,
+            "prompt": text,
+        }
+
+        response = requests.post(
+            f"{self.ollama_url}/api/embed",
+            json=payload,
+            timeout=self.timeout_seconds,
+        )
+        if response.status_code == 404:
+            logger.debug(
+                "Endpoint /api/embed indisponivel; tentando fallback "
+                "para /api/embeddings."
+            )
+            response = requests.post(
+                f"{self.ollama_url}/api/embeddings",
+                json=fallback_payload,
+                timeout=self.timeout_seconds,
+            )
+
+        response.raise_for_status()
+        return response.json()
+
+    def _extract_embedding(self, data: dict) -> list[float]:
+        """Normaliza a resposta de embedding entre versoes do Ollama."""
+
+        if "embeddings" in data:
+            embeddings = data["embeddings"]
+            if not embeddings:
+                raise ValueError("Resposta de embedding vazia.")
+            return embeddings[0]
+
+        if "embedding" in data:
+            return data["embedding"]
+
+        raise ValueError("Resposta de embedding em formato desconhecido.")

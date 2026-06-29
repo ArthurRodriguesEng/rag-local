@@ -13,6 +13,24 @@ com busca vetorial e LLM local.
 - Ollama
 - Modelo de embedding: `bge-m3`
 - Modelo de chat: `llama3.2:3b`
+- Modelo de chat balanceado: `qwen2.5:7b-instruct`
+
+## Requisitos para GPU NVIDIA
+
+O serviço do Ollama no Docker Compose está configurado com `runtime: nvidia`.
+Para usar aceleração por GPU, o host precisa ter:
+
+- driver NVIDIA instalado;
+- NVIDIA Container Toolkit instalado;
+- Docker com o runtime NVIDIA configurado.
+
+Sem esses requisitos, o serviço `ollama` pode falhar ao subir. Para validar o
+acesso à GPU pelo Docker, teste um container CUDA compatível com sua instalação
+ou acompanhe o uso da GPU no host com:
+
+```bash
+nvidia-smi
+```
 
 ## Passo atual: chatbot RAG interno
 
@@ -95,11 +113,23 @@ Suba a infraestrutura:
 docker compose up -d
 ```
 
-Garanta que os modelos estão disponíveis no Ollama:
+O Docker Compose também sobe um serviço auxiliar que baixa automaticamente os
+modelos usados pelo projeto no Ollama:
+
+- `bge-m3`
+- `llama3.2:3b`
+- `qwen2.5:7b-instruct`
+
+Acompanhe o download inicial com:
 
 ```bash
-docker exec -it rag-ollama ollama pull bge-m3
-docker exec -it rag-ollama ollama pull llama3.2:3b
+docker compose logs -f ollama-model-loader
+```
+
+Depois, confirme os modelos instalados:
+
+```bash
+docker exec -it rag-ollama ollama list
 ```
 
 Copie o arquivo de configuração de exemplo, se ainda não existir `.env`:
@@ -116,20 +146,18 @@ parâmetros no `.env`:
 ```text
 DEBUG                        -> ativa logs detalhados quando true
 UPLOAD_DIR                   -> pasta usada pela API para arquivos enviados
-RAG_PROFILE                  -> perfil padrão: fast_local, balanced_local ou quality_openai
+RAG_PROFILE                  -> perfil padrão: fast_local, balanced_local ou deep_local
 EMBEDDING_MODEL              -> modelo usado para gerar embeddings
 EMBEDDING_DIMENSION          -> dimensão do vetor salvo no pgvector
-CHAT_PROVIDER                -> provedor de chat: ollama ou openai
-CHAT_MODEL                   -> modelo usado para gerar respostas
-OPENAI_API_KEY               -> chave da API da OpenAI, se usar openai
-OPENAI_BASE_URL              -> URL base da API da OpenAI
+CHAT_MODEL                   -> modelo local do Ollama usado para gerar respostas
 CHUNK_SIZE                   -> tamanho máximo de cada chunk
 CHUNK_OVERLAP                -> sobreposição entre chunks
 RETRIEVAL_LIMIT              -> quantidade padrão de chunks no contexto
 RETRIEVAL_CANDIDATE_LIMIT    -> quantidade buscada antes de filtrar contexto
 RETRIEVAL_MAX_DISTANCE       -> distância máxima aceita na busca vetorial
 RAG_MAX_CONTEXT_CHARS        -> limite de caracteres do contexto no prompt
-RAG_HISTORY_LIMIT            -> quantidade de mensagens recentes no histórico
+RAG_MEMORY_LIMIT             -> quantidade de mensagens recentes usadas como memória
+RAG_MEMORY_MAX_CHARS         -> limite de caracteres da memória no prompt
 RAG_RESPONSE_MODE            -> modo de resposta: concise, analytical ou deep
 RAG_PROMPT_PATH              -> arquivo com prompt base do assistente
 RAG_SYSTEM_PROMPT            -> instrução base do assistente
@@ -138,17 +166,8 @@ EMBEDDING_TIMEOUT_SECONDS    -> timeout da chamada de embedding
 CHAT_TIMEOUT_SECONDS         -> timeout da chamada de chat
 ```
 
-Por padrão, o projeto usa Ollama para chat e embeddings. Para usar OpenAI no
-chat, configure:
-
-```env
-CHAT_PROVIDER=openai
-CHAT_MODEL=gpt-4o-mini
-OPENAI_API_KEY=sua_chave_aqui
-```
-
-Nesta versão, os embeddings continuam usando o `EMBEDDING_MODEL` configurado no
-Ollama. O default atual é `bge-m3` com `EMBEDDING_DIMENSION=1024`.
+O projeto usa Ollama local para chat e embeddings. O default atual de embedding
+é `bge-m3` com `EMBEDDING_DIMENSION=1024`.
 
 Se você mudar `EMBEDDING_MODEL` ou `EMBEDDING_DIMENSION`, precisa recriar a
 tabela de chunks e reingerir os documentos. Em desenvolvimento local:
@@ -210,14 +229,6 @@ python -m app.cli ask "Como Python pode ser usado em IA?" \
   --system-prompt "Você é um assistente técnico. Responda em português, com base apenas no contexto."
 ```
 
-Para usar OpenAI apenas nesta pergunta:
-
-```bash
-python -m app.cli ask "Como Python pode ser usado em IA?" \
-  --chat-provider openai \
-  --chat-model gpt-4o-mini
-```
-
 Liste os perfis disponíveis:
 
 ```bash
@@ -259,6 +270,18 @@ Inicie um chat interativo com histórico:
 ```bash
 python -m app.cli chat --profile fast_local --response-mode analytical
 ```
+
+Controle a memória recente do agente por comando:
+
+```bash
+python -m app.cli chat \
+  --profile balanced_local \
+  --memory-limit 8 \
+  --memory-max-chars 2400
+```
+
+`--memory-limit` define quantas mensagens anteriores são buscadas da conversa.
+`--memory-max-chars` limita quantos caracteres dessa memória entram no prompt.
 
 O perfil `fast_local` foi calibrado para máquinas locais mais limitadas:
 usa menos chunks e um contexto menor para reduzir a chance do Ollama encerrar
@@ -334,7 +357,12 @@ Chat:
 ```bash
 curl -X POST "http://localhost:8000/chat" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Quais são os pontos principais?", "profile": "fast_local"}'
+  -d '{
+    "message": "Quais são os pontos principais?",
+    "profile": "fast_local",
+    "memory_limit": 4,
+    "memory_max_chars": 1200
+  }'
 ```
 
 Como foram adicionadas tabelas de conversa e novas colunas em `chunks`, recrie

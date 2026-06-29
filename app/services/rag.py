@@ -53,14 +53,14 @@ class PromptConfig:
     empty_context_message: str
     max_context_chars: int
     response_mode: str
-    max_history_chars: int = 1200
 
 
 @dataclass(frozen=True)
 class ConversationConfig:
-    """Parâmetros de histórico de conversa."""
+    """Parâmetros da memória recente do agente."""
 
-    history_limit: int
+    memory_limit: int
+    memory_max_chars: int
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,8 @@ class RagServiceConfig:
                 response_mode=settings.RAG_RESPONSE_MODE,
             ),
             conversation=ConversationConfig(
-                history_limit=settings.RAG_HISTORY_LIMIT,
+                memory_limit=settings.RAG_MEMORY_LIMIT,
+                memory_max_chars=settings.RAG_MEMORY_MAX_CHARS,
             ),
         )
 
@@ -173,7 +174,7 @@ class RagService:
             self.session.flush()
             history = self.dependencies.message_repository.list_by_conversation(
                 conversation_id=conversation.id,
-                limit=self.config.conversation.history_limit,
+                limit=self.config.conversation.memory_limit,
             )
 
         if self._is_assistant_capability_question(question):
@@ -241,7 +242,7 @@ class RagService:
             "Se o contexto não tiver informação suficiente, responda "
             f"exatamente: {self.config.prompt.empty_context_message}\n\n"
             f"Modo de resposta: {self.config.prompt.response_mode}\n\n"
-            f"Histórico recente da conversa:\n{formatted_history}\n\n"
+            f"Memória recente da conversa:\n{formatted_history}\n\n"
             f"Contexto:\n{context}\n\n"
             f"Pergunta:\n{question}\n\n"
             "Resposta:"
@@ -276,7 +277,7 @@ class RagService:
         return "\n\n".join(blocks)
 
     def _format_history(self, messages: list[Message]) -> str:
-        """Formata o histórico recente da conversa."""
+        """Formata a memória recente da conversa."""
 
         if not messages:
             return "Sem histórico anterior."
@@ -287,7 +288,10 @@ class RagService:
         for message in messages:
             line = f"{message.role}: {message.content}"
 
-            if total_chars + len(line) > self.config.prompt.max_history_chars:
+            if (
+                total_chars + len(line)
+                > self.config.conversation.memory_max_chars
+            ):
                 break
 
             lines.append(line)

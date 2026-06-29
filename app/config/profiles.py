@@ -7,7 +7,6 @@ from app.config.settings import settings
 class ChatProfile:
     """Configuração de chat de um perfil RAG."""
 
-    provider: str
     model: str
 
 
@@ -28,14 +27,9 @@ class RagProfile:
     chat: ChatProfile
     embedding_model: str
     retrieval: RetrievalProfile
-    history_limit: int
+    memory_limit: int
+    memory_max_chars: int
     response_mode: str
-
-    @property
-    def chat_provider(self) -> str:
-        """Provedor de chat configurado no perfil."""
-
-        return self.chat.provider
 
     @property
     def chat_model(self) -> str:
@@ -66,7 +60,6 @@ PROFILES = {
     "fast_local": RagProfile(
         name="fast_local",
         chat=ChatProfile(
-            provider="ollama",
             model="llama3.2:3b",
         ),
         embedding_model="bge-m3",
@@ -75,13 +68,13 @@ PROFILES = {
             candidate_limit=6,
             max_context_chars=3200,
         ),
-        history_limit=2,
+        memory_limit=2,
+        memory_max_chars=800,
         response_mode="concise",
     ),
     "balanced_local": RagProfile(
         name="balanced_local",
         chat=ChatProfile(
-            provider="ollama",
             model="qwen2.5:7b-instruct",
         ),
         embedding_model="bge-m3",
@@ -90,13 +83,13 @@ PROFILES = {
             candidate_limit=8,
             max_context_chars=6000,
         ),
-        history_limit=4,
+        memory_limit=4,
+        memory_max_chars=1200,
         response_mode="analytical",
     ),
     "deep_local": RagProfile(
         name="deep_local",
         chat=ChatProfile(
-            provider="ollama",
             model="llama3.2:3b",
         ),
         embedding_model="bge-m3",
@@ -105,23 +98,9 @@ PROFILES = {
             candidate_limit=8,
             max_context_chars=6500,
         ),
-        history_limit=4,
+        memory_limit=8,
+        memory_max_chars=2400,
         response_mode="deep",
-    ),
-    "quality_openai": RagProfile(
-        name="quality_openai",
-        chat=ChatProfile(
-            provider="openai",
-            model="gpt-4o-mini",
-        ),
-        embedding_model="bge-m3",
-        retrieval=RetrievalProfile(
-            limit=8,
-            candidate_limit=12,
-            max_context_chars=12000,
-        ),
-        history_limit=6,
-        response_mode="analytical",
     ),
 }
 

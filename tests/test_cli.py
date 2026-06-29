@@ -57,10 +57,8 @@ def test_parser_accepts_ask_command_with_limit() -> None:
             "Python?",
             "--limit",
             "3",
-            "--chat-provider",
-            "openai",
             "--chat-model",
-            "gpt-test",
+            "llama3.2:3b",
             "--embedding-model",
             "bge-m3",
             "--system-prompt",
@@ -69,18 +67,23 @@ def test_parser_accepts_ask_command_with_limit() -> None:
             "fast_local",
             "--response-mode",
             "deep",
+            "--memory-limit",
+            "6",
+            "--memory-max-chars",
+            "1600",
         ]
     )
 
     assert args.command == "ask"
     assert args.question == ["Como", "usar", "Python?"]
     assert args.limit == 3
-    assert args.chat_provider == "openai"
-    assert args.chat_model == "gpt-test"
+    assert args.chat_model == "llama3.2:3b"
     assert args.embedding_model == "bge-m3"
     assert args.system_prompt == "Responda com base no contexto."
     assert args.profile == "fast_local"
     assert args.response_mode == "deep"
+    assert args.memory_limit == 6
+    assert args.memory_max_chars == 1600
 
 
 def test_parser_accepts_chat_command_with_profile() -> None:
@@ -95,6 +98,8 @@ def test_parser_accepts_chat_command_with_profile() -> None:
             "4",
             "--response-mode",
             "analytical",
+            "--memory-limit",
+            "4",
         ]
     )
 
@@ -102,6 +107,7 @@ def test_parser_accepts_chat_command_with_profile() -> None:
     assert args.profile == "balanced_local"
     assert args.limit == 4
     assert args.response_mode == "analytical"
+    assert args.memory_limit == 4
 
 
 def test_parser_accepts_reset_db_command() -> None:

@@ -22,14 +22,9 @@ class Settings(BaseSettings):
 
     # Modelos
     RAG_PROFILE: str = "fast_local"
-    CHAT_PROVIDER: str = "ollama"
     CHAT_MODEL: str = "llama3.2:3b"
     EMBEDDING_MODEL: str = "bge-m3"
     EMBEDDING_DIMENSION: int = 1024
-
-    # OpenAI
-    OPENAI_API_KEY: str | None = None
-    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
 
     # Chunking
     CHUNK_SIZE: int = 1000
@@ -40,7 +35,8 @@ class Settings(BaseSettings):
     RETRIEVAL_CANDIDATE_LIMIT: int = 12
     RETRIEVAL_MAX_DISTANCE: float | None = None
     RAG_MAX_CONTEXT_CHARS: int = 12000
-    RAG_HISTORY_LIMIT: int = 6
+    RAG_MEMORY_LIMIT: int = 6
+    RAG_MEMORY_MAX_CHARS: int = 1200
     RAG_RESPONSE_MODE: str = "analytical"
     RAG_PROMPT_PATH: str = "prompts/internal_assistant.md"
     RAG_SYSTEM_PROMPT: str = (
@@ -58,6 +54,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     @cached_property

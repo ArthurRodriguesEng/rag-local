@@ -19,6 +19,8 @@ def build_rag_config(
     system_prompt: str | None = None,
     empty_context_message: str | None = None,
     response_mode: str | None = None,
+    memory_limit: int | None = None,
+    memory_max_chars: int | None = None,
 ) -> RagServiceConfig:
     """Monta configuração RAG a partir de perfil e overrides externos."""
 
@@ -39,7 +41,16 @@ def build_rag_config(
             response_mode=response_mode or profile.response_mode,
         ),
         conversation=ConversationConfig(
-            history_limit=profile.history_limit,
+            memory_limit=(
+                memory_limit
+                if memory_limit is not None
+                else profile.memory_limit
+            ),
+            memory_max_chars=(
+                memory_max_chars
+                if memory_max_chars is not None
+                else profile.memory_max_chars
+            ),
         ),
     )
 
@@ -47,7 +58,6 @@ def build_rag_config(
 def build_rag_dependencies(
     session: Session,
     embedding_model: str,
-    chat_provider: str,
     chat_model: str,
 ) -> RagDependencies:
     """Monta dependências RAG concretas para a camada de entrada."""
@@ -56,7 +66,6 @@ def build_rag_dependencies(
         session=session,
         embedding_service=EmbeddingService(embedding_model=embedding_model),
         chat_service=ChatService.from_overrides(
-            provider=chat_provider,
             chat_model=chat_model,
         ),
     )

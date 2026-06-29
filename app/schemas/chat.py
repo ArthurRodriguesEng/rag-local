@@ -17,6 +17,8 @@ class ChatRequest(BaseModel):
     profile: str | None = None
     retrieval_limit: int | None = None
     response_mode: str | None = None
+    memory_limit: int | None = None
+    memory_max_chars: int | None = None
 
 
 class ChatResponse(BaseModel):
