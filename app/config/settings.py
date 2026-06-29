@@ -6,19 +6,54 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Centraliza e valida todas as configurações da aplicação."""
 
+    # Execução
+    DEBUG: bool = False
+    UPLOAD_DIR: str = "uploads"
+
     # PostgreSQL
-    POSTGRES_HOST: str
-    POSTGRES_PORT: int
-    POSTGRES_DB: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_DB: str = "rag"
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
 
     # Ollama
-    OLLAMA_URL: str
+    OLLAMA_URL: str = "http://localhost:11434"
 
     # Modelos
-    CHAT_MODEL: str
-    EMBEDDING_MODEL: str
+    RAG_PROFILE: str = "fast_local"
+    CHAT_PROVIDER: str = "ollama"
+    CHAT_MODEL: str = "llama3.2:3b"
+    EMBEDDING_MODEL: str = "bge-m3"
+    EMBEDDING_DIMENSION: int = 1024
+
+    # OpenAI
+    OPENAI_API_KEY: str | None = None
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+
+    # Chunking
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
+
+    # Recuperação e prompt
+    RETRIEVAL_LIMIT: int = 5
+    RETRIEVAL_CANDIDATE_LIMIT: int = 12
+    RETRIEVAL_MAX_DISTANCE: float | None = None
+    RAG_MAX_CONTEXT_CHARS: int = 12000
+    RAG_HISTORY_LIMIT: int = 6
+    RAG_RESPONSE_MODE: str = "analytical"
+    RAG_PROMPT_PATH: str = "prompts/internal_assistant.md"
+    RAG_SYSTEM_PROMPT: str = (
+        "Você é um assistente de conhecimento local. "
+        "Responda somente com base no contexto fornecido."
+    )
+    RAG_EMPTY_CONTEXT_MESSAGE: str = (
+        "Não encontrei informação suficiente nos documentos."
+    )
+
+    # Timeouts
+    EMBEDDING_TIMEOUT_SECONDS: int = 60
+    CHAT_TIMEOUT_SECONDS: int = 120
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -1,11 +1,21 @@
 from app.config.database import SessionLocal
 from app.models.document import Document
 
-session = SessionLocal()
 
-document = Document(filename="manual_python.pdf")
+def main() -> None:
+    session = SessionLocal()
 
-session.add(document)
-session.commit()
+    try:
+        document = Document(filename="manual_python.pdf")
 
-print(document.id)
+        session.add(document)
+        session.commit()
+
+        print(document.id)
+
+    finally:
+        session.close()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,11 +1,18 @@
-from app.config.database import Base, engine
+from importlib import import_module
 
-# Importa todos os models
-from app.models.document import Document
+from sqlalchemy import text
+
+from app.config.database import Base, engine
 
 
 def create_tables() -> None:
     """Cria todas as tabelas definidas nos Models."""
+
+    import_module("app.models")
+
+    with engine.begin() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+
     Base.metadata.create_all(bind=engine)
 
 

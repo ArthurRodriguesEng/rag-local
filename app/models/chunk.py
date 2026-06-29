@@ -1,14 +1,15 @@
-from datetime import datetime
 from uuid import UUID, uuid4
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, Text, func
+from sqlalchemy import ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
+from app.config.settings import settings
+from app.models.mixins import CreatedAtMixin
 
 
-class Chunk(Base):
+class Chunk(CreatedAtMixin, Base):
     """Representa um trecho de um documento."""
 
     __tablename__ = "chunks"
@@ -28,14 +29,20 @@ class Chunk(Base):
         nullable=False,
     )
 
-    embedding: Mapped[list[float]] = mapped_column(
-        Vector(768),
+    chunk_index: Mapped[int] = mapped_column(
+        Integer,
         nullable=False,
+        default=0,
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
+    char_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+    embedding: Mapped[list[float]] = mapped_column(
+        Vector(settings.EMBEDDING_DIMENSION),
         nullable=False,
     )
 

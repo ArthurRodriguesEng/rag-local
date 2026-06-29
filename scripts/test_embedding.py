@@ -1,5 +1,5 @@
 from app.config.database import SessionLocal
-from app.repositories.chunck import ChunkRepository
+from app.repositories.chunk import ChunkRepository
 from app.repositories.document import DocumentRepository
 from app.services.embedding import EmbeddingService
 
