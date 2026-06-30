@@ -1,4 +1,4 @@
-from requests import HTTPError
+from requests import HTTPError, ReadTimeout
 
 from app.services.chat import ChatService, ChatServiceConfig, ChatServiceError
 
@@ -87,5 +87,28 @@ def test_ollama_http_error_includes_response_body(monkeypatch) -> None:
         assert "Ollama retornou erro HTTP 500" in str(error)
         assert "model failed to load" in str(error)
         assert "qwen3:4b" in str(error)
+    else:
+        raise AssertionError("Expected ChatServiceError")
+
+
+def test_ollama_timeout_is_wrapped_as_chat_service_error(monkeypatch) -> None:
+    def fake_post(url, json, timeout):
+        raise ReadTimeout(
+            f"HTTPConnectionPool(host='localhost', port=11434): "
+            f"Read timed out. (read timeout={timeout})"
+        )
+
+    monkeypatch.setattr("app.services.chat.requests.post", fake_post)
+
+    service = ChatService.from_overrides(
+        chat_model="qwen3:8b",
+    )
+
+    try:
+        service.generate("Meu prompt")
+    except ChatServiceError as error:
+        assert "Falha de comunicação com Ollama" in str(error)
+        assert "qwen3:8b" in str(error)
+        assert "Read timed out" in str(error)
     else:
         raise AssertionError("Expected ChatServiceError")

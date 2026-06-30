@@ -35,6 +35,7 @@ class SummaryService:
         self.max_input_chars = max_input_chars
         self.min_group_chars = min_group_chars
         self.max_summary_chars = max_summary_chars
+        self._llm_disabled = False
 
     def summarize(
         self,
@@ -115,6 +116,13 @@ class SummaryService:
     ) -> str | None:
         """Gera resumo curto com fallback extrativo local."""
 
+        if self._llm_disabled:
+            return self._extractive_summary(
+                document_name=document_name,
+                section=section,
+                text=text,
+            )
+
         prompt = (
             "Resuma o trecho abaixo para busca RAG local.\n"
             "Use português do Brasil. Não invente informações.\n"
@@ -129,8 +137,11 @@ class SummaryService:
         try:
             return self.chat_service.generate(prompt)
         except ChatServiceError as error:
+            self._llm_disabled = True
             logger.warning(
                 "Resumo via Ollama falhou; usando resumo extrativo local. "
+                "As próximas seções desta ingestão usarão resumo extrativo "
+                "direto para evitar reiniciar o modelo repetidamente. "
                 f"Detalhes: {error}"
             )
             return self._extractive_summary(

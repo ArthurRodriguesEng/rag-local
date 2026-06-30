@@ -15,21 +15,47 @@ com busca vetorial e LLM local.
 - Modelo de chat: `llama3.2:3b`
 - Modelo de chat balanceado: `qwen2.5:7b-instruct`
 
-## Requisitos para GPU NVIDIA
+## GPU NVIDIA no Ollama
 
-O serviço do Ollama no Docker Compose está configurado com `runtime: nvidia`.
-Para usar aceleração por GPU, o host precisa ter:
+O `docker-compose.yml` principal é compatível com máquinas sem GPU NVIDIA. Para
+usar aceleração NVIDIA, suba o Ollama com o override
+`docker-compose.nvidia.yml`.
+
+O host precisa ter:
 
 - driver NVIDIA instalado;
 - NVIDIA Container Toolkit instalado;
-- Docker com o runtime NVIDIA configurado.
+- Docker com suporte a `--gpus all`.
 
-Sem esses requisitos, o serviço `ollama` pode falhar ao subir. Para validar o
-acesso à GPU pelo Docker, teste um container CUDA compatível com sua instalação
-ou acompanhe o uso da GPU no host com:
+Valide a GPU no host:
 
 ```bash
 nvidia-smi
+```
+
+Valide a GPU pelo Docker:
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+```
+
+Suba o projeto usando GPU NVIDIA no Ollama:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d ollama
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up ollama-model-loader
+```
+
+Para confirmar que o Ollama detectou aceleração, acompanhe os logs:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml logs -f ollama
+```
+
+Se o host não tiver NVIDIA Container Toolkit, use apenas:
+
+```bash
+docker compose up -d
 ```
 
 ## Passo atual: chatbot RAG interno
@@ -111,6 +137,12 @@ Suba a infraestrutura:
 
 ```bash
 docker compose up -d
+```
+
+Em host com GPU NVIDIA configurada:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d
 ```
 
 O Docker Compose também sobe um serviço auxiliar que baixa automaticamente os

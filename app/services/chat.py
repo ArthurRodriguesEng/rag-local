@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import requests
-from requests import HTTPError
+from requests import HTTPError, RequestException
 
 from app.config.settings import settings
 from app.utils import logger
@@ -102,21 +102,28 @@ class ChatService:
         if self.config.num_ctx is not None:
             options["num_ctx"] = self.config.num_ctx
 
-        response = requests.post(
-            f"{self.ollama_url}/api/chat",
-            json={
-                "model": self.chat_model,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                "stream": False,
-                "options": options,
-            },
-            timeout=self.timeout_seconds,
-        )
+        try:
+            response = requests.post(
+                f"{self.ollama_url}/api/chat",
+                json={
+                    "model": self.chat_model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
+                    ],
+                    "stream": False,
+                    "options": options,
+                },
+                timeout=self.timeout_seconds,
+            )
+        except RequestException as error:
+            raise ChatServiceError(
+                "Falha de comunicação com Ollama "
+                f"em {self.ollama_url} para o modelo {self.chat_model}: "
+                f"{error}"
+            ) from error
 
         self._raise_for_status(response)
 

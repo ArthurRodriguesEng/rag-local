@@ -6,13 +6,20 @@ from app.services.text_chunker import TextChunk
 class FailingChatService:
     """Chat falso que simula processo do Ollama morto."""
 
+    def __init__(self) -> None:
+        self.calls = 0
+        self.prompt = None
+
     def generate(self, prompt: str) -> str:
+        self.calls += 1
+        self.prompt = prompt
         raise ChatServiceError("llama-server process has terminated")
 
 
 def test_summary_service_falls_back_to_extractive_summary() -> None:
+    chat_service = FailingChatService()
     service = SummaryService(
-        chat_service=FailingChatService(),
+        chat_service=chat_service,
         min_group_chars=100,
         max_input_chars=2000,
     )
@@ -40,6 +47,7 @@ def test_summary_service_falls_back_to_extractive_summary() -> None:
     )
 
     assert summaries
+    assert chat_service.calls == 1
     assert summaries[0].chunk_type == "summary"
     assert "Resumo extrativo" in summaries[0].content
     assert "fotovoltaica" in summaries[0].content
