@@ -1,6 +1,6 @@
 services:
   ollama:
-    gpus: all
+    runtime: nvidia
 
     environment:
       NVIDIA_VISIBLE_DEVICES: all

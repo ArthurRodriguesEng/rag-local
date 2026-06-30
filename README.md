@@ -178,7 +178,7 @@ parâmetros no `.env`:
 ```text
 DEBUG                        -> ativa logs detalhados quando true
 UPLOAD_DIR                   -> pasta usada pela API para arquivos enviados
-RAG_PROFILE                  -> perfil padrão/configurável: fast, balanced, reasoning, robust ou max
+RAG_PROFILE                  -> perfil padrão/configurável: fast, balanced ou reasoning
 EMBEDDING_MODEL              -> modelo usado para gerar embeddings
 EMBEDDING_DIMENSION          -> dimensão do vetor salvo no pgvector
 CHAT_MODEL                   -> modelo local do Ollama usado para gerar respostas
@@ -195,7 +195,7 @@ RAG_PROMPT_PATH              -> arquivo com prompt base do assistente
 RAG_SYSTEM_PROMPT            -> instrução base do assistente
 RAG_EMPTY_CONTEXT_MESSAGE    -> resposta quando o contexto for insuficiente
 EMBEDDING_TIMEOUT_SECONDS    -> timeout da chamada de embedding
-CHAT_TIMEOUT_SECONDS         -> timeout da chamada de chat
+CHAT_TIMEOUT_SECONDS         -> timeout da chamada de chat; use 240s+ para modelos 8B em CPU
 ```
 
 O projeto usa Ollama local para chat e embeddings. O default atual de embedding
@@ -277,21 +277,17 @@ python -m app.cli ask "Quais são os pontos principais do documento?" \
 Perfis principais de complexidade/robustez:
 
 ```text
-fast       -> qwen3:8b, rápido e econômico para uso local diário
-balanced   -> gemma3:12b, equilíbrio entre síntese e custo local
-reasoning  -> deepseek-r1:8b, mais forte para raciocínio
-robust     -> qwen3:14b, síntese robusta para perguntas compostas
-max        -> mistral-small3.2:24b, maior robustez local
+fast       -> llama3.2:3b, mais rápido e leve para uso local diário
+balanced   -> qwen3:8b, equilíbrio entre qualidade em português e custo local
+reasoning  -> deepseek-r1:8b, mais forte para raciocínio, com maior latência em CPU
 ```
 
 Baixe o modelo antes de usar um nível:
 
 ```bash
+ollama pull llama3.2:3b
 ollama pull qwen3:8b
-ollama pull gemma3:12b
 ollama pull deepseek-r1:8b
-ollama pull qwen3:14b
-ollama pull mistral-small3.2
 ```
 
 Controle a profundidade da resposta por comando:
@@ -314,7 +310,7 @@ deep        -> resposta detalhada, com análise, limitações e implicações
 Para tornar respostas mais profundas por padrão, altere o `.env`:
 
 ```env
-RAG_PROFILE=robust
+RAG_PROFILE=reasoning
 ```
 
 Inicie um chat interativo com histórico:

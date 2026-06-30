@@ -60,8 +60,26 @@ class RagProfile:  # pylint: disable=too-many-instance-attributes
 
 FAST = RagProfile(
     name="fast",
-    description="Rápido e econômico para uso local diário.",
-    memory_hint="~8-12 GB RAM unificada recomendada",
+    description="Mais rápido e leve para validação e uso local diário.",
+    memory_hint="~4-8 GB RAM recomendada",
+    chat=ChatProfile(
+        model="llama3.2:3b",
+    ),
+    embedding_model="bge-m3",
+    retrieval=RetrievalProfile(
+        limit=3,
+        candidate_limit=6,
+        max_context_chars=3200,
+    ),
+    memory_limit=2,
+    memory_max_chars=700,
+    response_mode="concise",
+)
+
+BALANCED = RagProfile(
+    name="balanced",
+    description="Equilíbrio entre qualidade em português e custo local.",
+    memory_hint="~8-12 GB RAM recomendada",
     chat=ChatProfile(
         model="qwen3:8b",
     ),
@@ -73,79 +91,25 @@ FAST = RagProfile(
     ),
     memory_limit=3,
     memory_max_chars=1000,
-    response_mode="concise",
-)
-
-BALANCED = RagProfile(
-    name="balanced",
-    description="Equilíbrio entre síntese, português e custo local.",
-    memory_hint="~12-16 GB RAM unificada recomendada",
-    chat=ChatProfile(
-        model="gemma3:12b",
-    ),
-    embedding_model="bge-m3",
-    retrieval=RetrievalProfile(
-        limit=7,
-        candidate_limit=14,
-        max_context_chars=9000,
-    ),
-    memory_limit=4,
-    memory_max_chars=1400,
     response_mode="analytical",
 )
 
 REASONING = RagProfile(
     name="reasoning",
-    description="Mais forte para raciocínio e análise passo a passo.",
-    memory_hint="~12-16 GB RAM unificada recomendada",
+    description="Mais forte para raciocínio, com maior latência em CPU.",
+    memory_hint="~8-12 GB RAM recomendada; use timeout maior em CPU",
     chat=ChatProfile(
         model="deepseek-r1:8b",
     ),
     embedding_model="bge-m3",
     retrieval=RetrievalProfile(
-        limit=8,
-        candidate_limit=16,
-        max_context_chars=10000,
+        limit=3,
+        candidate_limit=10,
+        max_context_chars=7000,
     ),
-    memory_limit=5,
-    memory_max_chars=1600,
+    memory_limit=3,
+    memory_max_chars=700,
     response_mode="analytical",
-)
-
-ROBUST = RagProfile(
-    name="robust",
-    description="Síntese mais robusta para perguntas longas e compostas.",
-    memory_hint="~16-24 GB RAM unificada recomendada",
-    chat=ChatProfile(
-        model="qwen3:14b",
-    ),
-    embedding_model="bge-m3",
-    retrieval=RetrievalProfile(
-        limit=9,
-        candidate_limit=18,
-        max_context_chars=12000,
-    ),
-    memory_limit=6,
-    memory_max_chars=2000,
-    response_mode="deep",
-)
-
-MAX = RagProfile(
-    name="max",
-    description="Maior robustez local, com custo de memória e latência altos.",
-    memory_hint="24 GB+ RAM unificada recomendada",
-    chat=ChatProfile(
-        model="mistral-small3.2:24b",
-    ),
-    embedding_model="bge-m3",
-    retrieval=RetrievalProfile(
-        limit=10,
-        candidate_limit=24,
-        max_context_chars=16000,
-    ),
-    memory_limit=8,
-    memory_max_chars=2600,
-    response_mode="deep",
 )
 
 
@@ -153,20 +117,16 @@ PROFILES = {
     "fast": FAST,
     "balanced": BALANCED,
     "reasoning": REASONING,
-    "robust": ROBUST,
-    "max": MAX,
 }
 
 
 def primary_profiles() -> list[RagProfile]:
-    """Retorna os cinco perfis disponíveis em ordem de robustez."""
+    """Retorna os perfis disponíveis em ordem de robustez."""
 
     return [
         FAST,
         BALANCED,
         REASONING,
-        ROBUST,
-        MAX,
     ]
 
 

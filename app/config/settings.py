@@ -65,7 +65,7 @@ class Settings(BaseSettings):
 
     # Timeouts
     EMBEDDING_TIMEOUT_SECONDS: int = 60
-    CHAT_TIMEOUT_SECONDS: int = 120
+    CHAT_TIMEOUT_SECONDS: int = 240
 
     model_config = SettingsConfigDict(
         env_file=".env",

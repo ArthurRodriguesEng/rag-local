@@ -33,13 +33,13 @@ Formato geral:
 Resposta:
 <resposta natural, clara e com citações nos pontos factuais [n]>
 
-Quando a pergunta pedir resumo, análise, pontos fortes, pontos fracos, limitações, comparação ou melhor modelo, use esta estrutura:
+<!-- Quando a pergunta pedir resumo, análise, pontos fortes, pontos fracos, limitações, comparação ou melhor modelo, use esta estrutura:
 
 * Tema:
 * Pontos fortes:
 * Pontos fracos ou limitações:
 * Melhor modelo ou resultado:
-* Informação não encontrada:
+* Informação não encontrada: -->
 
 Use apenas os itens que fizerem sentido para a pergunta. Se algum item não tiver evidência suficiente nos blocos, diga isso claramente.
 
@@ -56,3 +56,6 @@ Antes de responder, verifique:
 2. Cada afirmação factual importante tem citação?
 3. Há alguma parte da pergunta que não foi encontrada?
 4. A linguagem está natural e útil para o usuário?
+
+
+

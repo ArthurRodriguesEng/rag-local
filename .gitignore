@@ -7,3 +7,4 @@ uploads/
 .env.local
 .env.*.local
 postgres_help.md
+documents/chatbot-kb
