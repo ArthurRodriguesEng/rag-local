@@ -1,0 +1,127 @@
+cases:
+  - name: dissertacao_sintese_analitica_composta
+    question: "Resuma sobre o tema da dissertação, fale os pontos fortes e fracos e qual foi o melhor modelo testado."
+    expected_documents:
+      - "Dissertação_Mestrado_PPEE.pdf"
+    expected_terms:
+      - "fotovoltaica"
+      - "modelo"
+      - "limitações"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: python_linguagem
+    question: "O que é Python?"
+    expected_documents:
+      - "manual_python.txt"
+    expected_terms:
+      - "linguagem"
+      - "programação"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: python_usos
+    question: "Para quais áreas o Python é usado no documento?"
+    expected_documents:
+      - "manual_python.txt"
+    expected_terms:
+      - "automação"
+      - "inteligência artificial"
+      - "desenvolvimento web"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: rag_chunks
+    question: "O que acontece com documentos em um sistema RAG?"
+    expected_documents:
+      - "manual_python.txt"
+    expected_terms:
+      - "chunks"
+      - "embeddings"
+      - "banco vetorial"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: rag_pergunta_usuario
+    question: "O que o sistema faz quando o usuário pergunta algo?"
+    expected_documents:
+      - "manual_python.txt"
+    expected_terms:
+      - "chunks"
+      - "contexto"
+      - "modelo de linguagem"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: dissertacao_identificacao
+    question: "Qual é o tema principal da dissertação?"
+    expected_documents:
+      - "Dissertação_Mestrado_PPEE.pdf"
+    expected_terms:
+      - "dissertação"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: dissertacao_programa
+    question: "A dissertação está associada a qual programa ou área?"
+    expected_documents:
+      - "Dissertação_Mestrado_PPEE.pdf"
+    expected_terms:
+      - "PPEE"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: dissertacao_metodologia
+    question: "Que metodologia ou abordagem a dissertação descreve?"
+    expected_documents:
+      - "Dissertação_Mestrado_PPEE.pdf"
+    expected_terms:
+      - "metodologia"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: dissertacao_resultados
+    question: "Quais resultados ou conclusões são apresentados na dissertação?"
+    expected_documents:
+      - "Dissertação_Mestrado_PPEE.pdf"
+    expected_terms:
+      - "resultados"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: dissertacao_objetivo
+    question: "Qual objetivo é declarado na dissertação?"
+    expected_documents:
+      - "Dissertação_Mestrado_PPEE.pdf"
+    expected_terms:
+      - "objetivo"
+    require_sources: true
+    require_citations: true
+    should_find_answer: true
+
+  - name: negativo_receita
+    question: "Qual é a receita de bolo de cenoura do documento?"
+    require_sources: false
+    require_citations: false
+    should_find_answer: false
+
+  - name: negativo_preco_bitcoin
+    question: "Qual é o preço do Bitcoin hoje?"
+    require_sources: false
+    require_citations: false
+    should_find_answer: false
+
+  - name: negativo_presidente_2050
+    question: "Quem será o presidente do Brasil em 2050?"
+    require_sources: false
+    require_citations: false
+    should_find_answer: false

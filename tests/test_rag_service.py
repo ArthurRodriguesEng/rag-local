@@ -45,6 +45,36 @@ class FakeChunkRepository:
         return self.chunks
 
 
+class FakeHybridChunkRepository:
+    """Repositório fake para validar recuperação por subtarefas."""
+
+    def __init__(self) -> None:
+        self.calls = []
+
+    def search_hybrid(
+        self,
+        query: str,
+        **kwargs,
+    ) -> list[RetrievedChunk]:
+        options = kwargs.get("options")
+        chunk_type = getattr(options, "chunk_type", kwargs.get("chunk_type"))
+        limit = getattr(options, "limit", kwargs.get("limit", 5))
+        self.calls.append(
+            {
+                "query": query,
+                "chunk_type": chunk_type,
+                "limit": limit,
+            }
+        )
+        chunk = SimpleNamespace(
+            content=f"Evidência para {query}",
+            chunk_index=len(self.calls),
+            chunk_type=chunk_type or "content",
+            document=SimpleNamespace(filename="dissertacao.pdf"),
+        )
+        return [RetrievedChunk(chunk=chunk, score=0.5)]
+
+
 class FakeChatService:
     """Serviço de chat falso que registra o prompt final."""
 
@@ -89,9 +119,11 @@ class FakeMessageRepository:
     def __init__(self, messages: list[object]) -> None:
         self.messages = messages
         self.limit = None
+        self.conversation_id = None
         self.saved = []
 
     def list_by_conversation(self, conversation_id, limit: int):
+        self.conversation_id = conversation_id
         self.limit = limit
         return self.messages[:limit]
 
@@ -105,27 +137,25 @@ class FakeMessageRepository:
         )
 
 
-def make_service(
-    embedding_service: FakeEmbeddingService,
-    chunk_repository: FakeChunkRepository,
-    chat_service: FakeChatService,
-    session=None,
-    conversation_repository=None,
-    message_repository=None,
-    config=None,
-) -> RagService:
+def make_service(**overrides) -> RagService:
     """Cria o RagService com dependências falsas."""
 
+    embedding_service = overrides.get("embedding_service")
+    chunk_repository = overrides.get("chunk_repository")
+    chat_service = overrides.get("chat_service")
+
     return RagService(
-        session=session or object(),
+        session=overrides.get("session") or object(),
         dependencies=RagDependencies(
-            embedding_service=embedding_service,
-            chunk_repository=chunk_repository,
-            conversation_repository=conversation_repository or object(),
-            message_repository=message_repository or object(),
-            chat_service=chat_service,
+            embedding_service=embedding_service or FakeEmbeddingService(),
+            chunk_repository=chunk_repository or FakeChunkRepository([]),
+            conversation_repository=(
+                overrides.get("conversation_repository") or object()
+            ),
+            message_repository=overrides.get("message_repository") or object(),
+            chat_service=chat_service or FakeChatService(),
         ),
-        config=config,
+        config=overrides.get("config"),
     )
 
 
@@ -248,3 +278,34 @@ def test_agent_memory_limit_and_char_budget_are_applied() -> None:
     assert "pergunta anterior curta" in chat_service.prompt
     assert "resposta anterior curta" in chat_service.prompt
     assert "mensagem que excederia o limite" not in chat_service.prompt
+
+
+def test_complex_question_is_decomposed_into_subtasks() -> None:
+    embedding_service = FakeEmbeddingService()
+    chunk_repository = FakeHybridChunkRepository()
+    chat_service = FakeChatService()
+    service = make_service(
+        embedding_service=embedding_service,
+        chunk_repository=chunk_repository,
+        chat_service=chat_service,
+    )
+
+    response = service.answer(
+        question=(
+            "olá, resuma sobre o tema da dissertação e fale quais são os "
+            "pontos fortes e fracos e qual o melhor modelo testado."
+        ),
+        limit=5,
+    )
+
+    queries = [call["query"] for call in chunk_repository.calls]
+
+    assert queries[0].startswith("resuma sobre o tema")
+    assert any("tema objetivo" in query for query in queries)
+    assert any("contribuições vantagens" in query for query in queries)
+    assert any("limitações fraquezas" in query for query in queries)
+    assert any("melhor modelo" in query for query in queries)
+    assert chunk_repository.calls[0]["chunk_type"] == "summary"
+    assert "Subtarefas esperadas:" in chat_service.prompt
+    assert "- pontos fracos:" in chat_service.prompt
+    assert response.chunks

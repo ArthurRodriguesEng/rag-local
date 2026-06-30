@@ -7,7 +7,8 @@ from sqlalchemy import delete, text
 from sqlalchemy.exc import DataError
 
 from app.config.database import Base, SessionLocal, engine
-from app.config.profiles import PROFILES, get_profile
+from app.config.profiles import PROFILES, get_profile, primary_profiles
+from app.config.schema import create_search_indexes
 from app.config.settings import settings
 from app.models.chunk import Chunk
 from app.models.document import Document
@@ -17,8 +18,12 @@ from app.services.chat import ChatServiceError
 from app.services.embedding import EmbeddingService
 from app.services.ingestion import IngestionService
 from app.services.rag import RagService
-from app.services.rag_builder import build_rag_config, build_rag_dependencies
-from app.services.text_chunker import RecursiveTextChunker
+from app.services.rag_builder import (
+    RagConfigOverrides,
+    build_rag_config,
+    build_rag_dependencies,
+)
+from app.services.text_chunker import StructuredTextChunker
 from app.utils import logger
 
 
@@ -30,16 +35,10 @@ class ChatOverrides:
 
 
 @dataclass(frozen=True)
-class RagOverrides:
+class RagOverrides(RagConfigOverrides):
     """Sobrescritas opcionais do RAG recebidas pela CLI."""
 
-    limit: int | None = None
     embedding_model: str | None = None
-    system_prompt: str | None = None
-    empty_context_message: str | None = None
-    response_mode: str | None = None
-    memory_limit: int | None = None
-    memory_max_chars: int | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +81,10 @@ def init_db() -> None:
 
     logger.info("Criando tabelas mapeadas pelo SQLAlchemy.")
     Base.metadata.create_all(bind=engine)
+
+    logger.info("Criando índices de busca local.")
+    with engine.begin() as connection:
+        create_search_indexes(connection)
 
 
 def reset_db() -> None:
@@ -128,7 +131,7 @@ def ingest_document(
         text_chunker = None
 
         if chunk_size is not None or chunk_overlap is not None:
-            text_chunker = RecursiveTextChunker(
+            text_chunker = StructuredTextChunker(
                 chunk_size=(
                     chunk_size
                     if chunk_size is not None
@@ -139,6 +142,7 @@ def ingest_document(
                     if chunk_overlap is not None
                     else settings.CHUNK_OVERLAP
                 ),
+                chunk_min_size=settings.CHUNK_MIN_SIZE,
             )
             logger.debug(
                 "Chunker customizado: "
@@ -192,12 +196,7 @@ def ask_question(
         selected_chat_model = options.chat.model or profile.chat_model
         service_config = build_rag_config(
             profile=profile,
-            limit=options.rag.limit,
-            system_prompt=options.rag.system_prompt,
-            empty_context_message=options.rag.empty_context_message,
-            response_mode=options.rag.response_mode,
-            memory_limit=options.rag.memory_limit,
-            memory_max_chars=options.rag.memory_max_chars,
+            overrides=options.rag,
         )
 
         logger.debug(
@@ -281,9 +280,33 @@ def print_sources(chunks) -> None:
 
     print("\nFontes:")
     for index, retrieved in enumerate(chunks, start=1):
+        details = [
+            f"- [{index}] {retrieved.document_filename}",
+            f"trecho {retrieved.chunk_index}",
+        ]
+
+        if retrieved.page is not None:
+            details.append(f"página {retrieved.page}")
+
+        if retrieved.section:
+            details.append(f"seção {retrieved.section}")
+
+        details.append(f"score {retrieved.score:.4f}")
+
+        if retrieved.vector_distance is not None:
+            details.append(f"distância {retrieved.vector_distance:.4f}")
+
+        if retrieved.lexical_score is not None:
+            details.append(f"lexical {retrieved.lexical_score:.4f}")
+
+        if retrieved.chunk_type != "content":
+            details.append(f"tipo {retrieved.chunk_type}")
+
+        if retrieved.subquery:
+            details.append(f"subtarefa {retrieved.subquery}")
+
         print(
-            f"- [{index}] {retrieved.document_filename}, "
-            f"trecho {retrieved.chunk_index}, distância {retrieved.score:.4f}"
+            ", ".join(details)
         )
 
 
@@ -660,14 +683,15 @@ def _handle_profiles(
 ) -> None:
     """Executa o comando profiles."""
 
-    for profile in PROFILES.values():
+    for profile in primary_profiles():
         print(
             f"{profile.name} | chat={profile.chat_model} | "
             f"embedding={profile.embedding_model} | "
             f"limit={profile.retrieval_limit} | "
             f"contexto={profile.max_context_chars} | "
             f"memoria={profile.memory_limit}/{profile.memory_max_chars} | "
-            f"modo={profile.response_mode}"
+            f"modo={profile.response_mode} | "
+            f"{profile.memory_hint} | {profile.description}"
         )
 
 

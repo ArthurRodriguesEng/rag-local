@@ -14,6 +14,9 @@ class ChatServiceConfig:
     ollama_url: str
     chat_model: str
     timeout_seconds: int
+    temperature: float
+    top_p: float
+    num_ctx: int | None
 
     @classmethod
     def from_settings(cls) -> "ChatServiceConfig":
@@ -23,6 +26,9 @@ class ChatServiceConfig:
             ollama_url=settings.OLLAMA_URL,
             chat_model=settings.CHAT_MODEL,
             timeout_seconds=settings.CHAT_TIMEOUT_SECONDS,
+            temperature=settings.OLLAMA_TEMPERATURE,
+            top_p=settings.OLLAMA_TOP_P,
+            num_ctx=settings.OLLAMA_NUM_CTX,
         )
 
 
@@ -70,6 +76,9 @@ class ChatService:
                 ollama_url=default_config.ollama_url,
                 chat_model=chat_model or default_config.chat_model,
                 timeout_seconds=default_config.timeout_seconds,
+                temperature=default_config.temperature,
+                top_p=default_config.top_p,
+                num_ctx=default_config.num_ctx,
             )
         )
 
@@ -85,6 +94,14 @@ class ChatService:
     def _generate_with_ollama(self, prompt: str) -> str:
         """Gera resposta usando o endpoint local do Ollama."""
 
+        options = {
+            "temperature": self.config.temperature,
+            "top_p": self.config.top_p,
+        }
+
+        if self.config.num_ctx is not None:
+            options["num_ctx"] = self.config.num_ctx
+
         response = requests.post(
             f"{self.ollama_url}/api/chat",
             json={
@@ -96,6 +113,7 @@ class ChatService:
                     }
                 ],
                 "stream": False,
+                "options": options,
             },
             timeout=self.timeout_seconds,
         )

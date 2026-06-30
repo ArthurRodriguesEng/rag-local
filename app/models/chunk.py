@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import ForeignKey, Integer, Text
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
@@ -39,6 +39,38 @@ class Chunk(CreatedAtMixin, Base):
         Integer,
         nullable=False,
         default=0,
+    )
+
+    chunk_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="content",
+    )
+
+    page: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    section: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    start_char: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    end_char: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    content_hash: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
     )
 
     embedding: Mapped[list[float]] = mapped_column(

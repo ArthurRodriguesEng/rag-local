@@ -17,11 +17,6 @@ services:
   ollama:
     image: ollama/ollama
     container_name: rag-ollama
-    runtime: nvidia
-
-    environment:
-      NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
 
     ports:
       - "11434:11434"
@@ -51,8 +46,11 @@ services:
     command:
       - |
         ollama pull bge-m3
-        ollama pull llama3.2:3b
-        ollama pull qwen2.5:7b-instruct
+        ollama pull qwen3:8b
+        ollama pull gemma3:12b
+        ollama pull deepseek-r1:8b
+        ollama pull qwen3:14b
+        ollama pull mistral-small3.2:24b
 
 volumes:
   postgres_data:

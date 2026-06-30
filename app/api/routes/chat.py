@@ -7,7 +7,11 @@ from app.api.dependencies import get_session
 from app.config.profiles import get_profile
 from app.schemas.chat import ChatRequest, ChatResponse, SourceResponse
 from app.services.rag import RagService
-from app.services.rag_builder import build_rag_config, build_rag_dependencies
+from app.services.rag_builder import (
+    RagConfigOverrides,
+    build_rag_config,
+    build_rag_dependencies,
+)
 
 
 router = APIRouter(tags=["chat"])
@@ -28,10 +32,12 @@ def chat(
     )
     config = build_rag_config(
         profile=profile,
-        limit=request.retrieval_limit,
-        response_mode=request.response_mode,
-        memory_limit=request.memory_limit,
-        memory_max_chars=request.memory_max_chars,
+        overrides=RagConfigOverrides(
+            limit=request.retrieval_limit,
+            response_mode=request.response_mode,
+            memory_limit=request.memory_limit,
+            memory_max_chars=request.memory_max_chars,
+        ),
     )
     service = RagService(
         session=session,
@@ -60,7 +66,18 @@ def chat(
             SourceResponse(
                 document=chunk.document_filename,
                 chunk_index=chunk.chunk_index,
-                distance=chunk.score,
+                distance=(
+                    chunk.vector_distance
+                    if chunk.vector_distance is not None
+                    else chunk.score
+                ),
+                page=chunk.page,
+                section=chunk.section,
+                score=chunk.score,
+                vector_distance=chunk.vector_distance,
+                lexical_score=chunk.lexical_score,
+                chunk_type=chunk.chunk_type,
+                subquery=chunk.subquery,
             )
             for chunk in response.chunks
         ],

@@ -64,7 +64,7 @@ def test_parser_accepts_ask_command_with_limit() -> None:
             "--system-prompt",
             "Responda com base no contexto.",
             "--profile",
-            "fast_local",
+            "fast",
             "--response-mode",
             "deep",
             "--memory-limit",
@@ -80,7 +80,7 @@ def test_parser_accepts_ask_command_with_limit() -> None:
     assert args.chat_model == "llama3.2:3b"
     assert args.embedding_model == "bge-m3"
     assert args.system_prompt == "Responda com base no contexto."
-    assert args.profile == "fast_local"
+    assert args.profile == "fast"
     assert args.response_mode == "deep"
     assert args.memory_limit == 6
     assert args.memory_max_chars == 1600
@@ -93,7 +93,7 @@ def test_parser_accepts_chat_command_with_profile() -> None:
         [
             "chat",
             "--profile",
-            "balanced_local",
+            "balanced",
             "--limit",
             "4",
             "--response-mode",
@@ -104,7 +104,7 @@ def test_parser_accepts_chat_command_with_profile() -> None:
     )
 
     assert args.command == "chat"
-    assert args.profile == "balanced_local"
+    assert args.profile == "balanced"
     assert args.limit == 4
     assert args.response_mode == "analytical"
     assert args.memory_limit == 4

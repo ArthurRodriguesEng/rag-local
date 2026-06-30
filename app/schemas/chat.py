@@ -7,6 +7,13 @@ class SourceResponse(BaseModel):
     document: str
     chunk_index: int
     distance: float
+    page: int | None = None
+    section: str | None = None
+    score: float | None = None
+    vector_distance: float | None = None
+    lexical_score: float | None = None
+    chunk_type: str | None = None
+    subquery: str | None = None
 
 
 class ChatRequest(BaseModel):

@@ -55,6 +55,8 @@ def test_generate_calls_ollama_chat(monkeypatch) -> None:
     assert calls[0]["json"]["model"] == service.chat_model
     assert calls[0]["json"]["messages"][0]["content"] == "Meu prompt"
     assert calls[0]["json"]["stream"] is False
+    assert calls[0]["json"]["options"]["temperature"] == 0.0
+    assert calls[0]["json"]["options"]["top_p"] == 0.3
     assert calls[0]["timeout"] == 120
 
 

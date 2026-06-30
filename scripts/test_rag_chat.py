@@ -10,13 +10,12 @@ def main() -> None:
     session = SessionLocal()
 
     try:
-        profile = get_profile("fast_local")
+        profile = get_profile("fast")
         rag_service = RagService(
             session,
             dependencies=build_rag_dependencies(
                 session,
                 profile.embedding_model,
-                profile.chat_provider,
                 profile.chat_model,
             ),
             config=build_rag_config(profile),

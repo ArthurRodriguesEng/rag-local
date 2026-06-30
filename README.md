@@ -146,7 +146,7 @@ parâmetros no `.env`:
 ```text
 DEBUG                        -> ativa logs detalhados quando true
 UPLOAD_DIR                   -> pasta usada pela API para arquivos enviados
-RAG_PROFILE                  -> perfil padrão: fast_local, balanced_local ou deep_local
+RAG_PROFILE                  -> perfil padrão/configurável: fast, balanced, reasoning, robust ou max
 EMBEDDING_MODEL              -> modelo usado para gerar embeddings
 EMBEDDING_DIMENSION          -> dimensão do vetor salvo no pgvector
 CHAT_MODEL                   -> modelo local do Ollama usado para gerar respostas
@@ -239,14 +239,34 @@ Use um perfil específico:
 
 ```bash
 python -m app.cli ask "Quais são os pontos principais do documento?" \
-  --profile balanced_local
+  --profile balanced
+```
+
+Perfis principais de complexidade/robustez:
+
+```text
+fast       -> qwen3:8b, rápido e econômico para uso local diário
+balanced   -> gemma3:12b, equilíbrio entre síntese e custo local
+reasoning  -> deepseek-r1:8b, mais forte para raciocínio
+robust     -> qwen3:14b, síntese robusta para perguntas compostas
+max        -> mistral-small3.2:24b, maior robustez local
+```
+
+Baixe o modelo antes de usar um nível:
+
+```bash
+ollama pull qwen3:8b
+ollama pull gemma3:12b
+ollama pull deepseek-r1:8b
+ollama pull qwen3:14b
+ollama pull mistral-small3.2
 ```
 
 Controle a profundidade da resposta por comando:
 
 ```bash
 python -m app.cli ask "Analise os resultados do artigo" \
-  --profile fast_local \
+  --profile fast \
   --response-mode deep \
   --limit 4
 ```
@@ -262,20 +282,20 @@ deep        -> resposta detalhada, com análise, limitações e implicações
 Para tornar respostas mais profundas por padrão, altere o `.env`:
 
 ```env
-RAG_PROFILE=deep_local
+RAG_PROFILE=robust
 ```
 
 Inicie um chat interativo com histórico:
 
 ```bash
-python -m app.cli chat --profile fast_local --response-mode analytical
+python -m app.cli chat --profile fast --response-mode analytical
 ```
 
 Controle a memória recente do agente por comando:
 
 ```bash
 python -m app.cli chat \
-  --profile balanced_local \
+  --profile balanced \
   --memory-limit 8 \
   --memory-max-chars 2400
 ```
@@ -283,9 +303,9 @@ python -m app.cli chat \
 `--memory-limit` define quantas mensagens anteriores são buscadas da conversa.
 `--memory-max-chars` limita quantos caracteres dessa memória entram no prompt.
 
-O perfil `fast_local` foi calibrado para máquinas locais mais limitadas:
-usa menos chunks e um contexto menor para reduzir a chance do Ollama encerrar
-o processo por falta de recurso.
+O perfil `fast` foi calibrado para máquinas locais mais limitadas. Perfis mais
+altos aumentam contexto, memória e custo local; baixe o modelo no Ollama antes
+de usar o perfil escolhido.
 
 Para salvar uma pergunta isolada em uma conversa:
 
@@ -359,7 +379,7 @@ curl -X POST "http://localhost:8000/chat" \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Quais são os pontos principais?",
-    "profile": "fast_local",
+    "profile": "fast",
     "memory_limit": 4,
     "memory_max_chars": 1200
   }'
@@ -431,8 +451,8 @@ o modelo provavelmente foi encerrado por limite de memória/processamento ou
 por prompt grande demais. Use o perfil leve ou reduza o contexto:
 
 ```bash
-python -m app.cli ask "sua pergunta" --profile fast_local --limit 2
-python -m app.cli chat --profile fast_local --limit 2
+python -m app.cli ask "sua pergunta" --profile fast --limit 2
+python -m app.cli chat --profile fast --limit 2
 ```
 
 ## Próximos passos sugeridos
