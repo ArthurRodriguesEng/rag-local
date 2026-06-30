@@ -215,10 +215,10 @@ Crie a extensão `vector` e as tabelas:
 python -m app.cli init-db
 ```
 
-Ingere um documento:
+Ingere um ou mais documentos (`.txt`, `.md`, `.markdown` ou `.pdf`):
 
 ```bash
-python -m app.cli ingest documents/manual_python.txt
+python -m app.cli ingest documents/manual_python.txt documents/notas.md
 ```
 
 Você também pode sobrescrever parâmetros da ingestão no terminal:
@@ -392,6 +392,7 @@ Endpoints disponíveis:
 ```text
 GET    /health
 POST   /documents/upload?filename=arquivo.txt
+POST   /documents/upload/batch
 GET    /documents
 DELETE /documents/{document_id}
 POST   /chat
@@ -402,6 +403,14 @@ Upload usando corpo binário:
 ```bash
 curl -X POST "http://localhost:8000/documents/upload?filename=manual.txt" \
   --data-binary @documents/manual_python.txt
+```
+
+Upload de vários arquivos:
+
+```bash
+curl -X POST "http://localhost:8000/documents/upload/batch" \
+  -F "files=@documents/manual_python.txt" \
+  -F "files=@documents/notas.md"
 ```
 
 Chat:

@@ -116,18 +116,18 @@ def clear_db() -> None:
         session.close()
 
 
-def ingest_document(
-    file_path: str,
+def ingest_documents(
+    file_paths: list[str],
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
     embedding_model: str | None = None,
 ) -> None:
-    """Ingere um documento pelo terminal."""
+    """Ingere um ou mais documentos pelo terminal."""
 
     session = SessionLocal()
 
     try:
-        logger.info(f"Iniciando ingestão: {file_path}")
+        logger.info(f"Iniciando ingestão de {len(file_paths)} arquivo(s).")
         text_chunker = None
 
         if chunk_size is not None or chunk_overlap is not None:
@@ -164,18 +164,48 @@ def ingest_document(
             embedding_service=embedding_service,
         )
         chunk_repository = ChunkRepository(session)
-        logger.info("Extraindo texto, criando chunks e gerando embeddings.")
-        document = service.ingest(file_path)
-        chunks = chunk_repository.get_by_document(document.id)
+        documents = []
 
-        logger.success("Documento ingerido com sucesso.")
-        print(f"ID: {document.id}")
-        print(f"Arquivo: {document.filename}")
-        print(f"Total de chunks: {len(chunks)}")
+        for file_path in file_paths:
+            logger.info(f"Ingerindo arquivo: {file_path}")
+            logger.info("Extraindo texto, criando chunks e gerando embeddings.")
+            document = service.ingest(file_path)
+            chunks = chunk_repository.get_by_document(document.id)
+            documents.append((document, len(chunks)))
+
+        if len(documents) == 1:
+            document, chunk_count = documents[0]
+            logger.success("Documento ingerido com sucesso.")
+            print(f"ID: {document.id}")
+            print(f"Arquivo: {document.filename}")
+            print(f"Total de chunks: {chunk_count}")
+            return
+
+        logger.success("Documentos ingeridos com sucesso.")
+        print(f"Total de documentos: {len(documents)}")
+
+        for document, chunk_count in documents:
+            print(f"- {document.filename}: {chunk_count} chunks, ID: {document.id}")
 
     finally:
         logger.debug("Fechando sessão do banco após ingestão.")
         session.close()
+
+
+def ingest_document(
+    file_path: str,
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
+    embedding_model: str | None = None,
+) -> None:
+    """Ingere um documento pelo terminal."""
+
+    ingest_documents(
+        file_paths=[file_path],
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        embedding_model=embedding_model,
+    )
 
 
 def ask_question(
@@ -405,12 +435,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     ingest_parser = subparsers.add_parser(
         "ingest",
-        help="Ingere um arquivo .txt ou .pdf.",
+        help="Ingere um ou mais arquivos .txt, .md ou .pdf.",
     )
     ingest_parser.add_argument(
         "file_path",
         type=str,
-        help="Caminho do arquivo que será ingerido.",
+        nargs="+",
+        help="Caminho de um ou mais arquivos que serão ingeridos.",
     )
     ingest_parser.add_argument(
         "--chunk-size",
@@ -610,13 +641,14 @@ def _handle_reset_db(args: argparse.Namespace, _parser: argparse.ArgumentParser)
 def _handle_ingest(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     """Executa o comando ingest."""
 
-    file_path = Path(args.file_path)
+    for file_path in args.file_path:
+        path = Path(file_path)
 
-    if not file_path.exists():
-        parser.error(f"Arquivo não encontrado: {args.file_path}")
+        if not path.exists():
+            parser.error(f"Arquivo não encontrado: {file_path}")
 
-    ingest_document(
-        file_path=args.file_path,
+    ingest_documents(
+        file_paths=args.file_path,
         chunk_size=args.chunk_size,
         chunk_overlap=args.chunk_overlap,
         embedding_model=args.embedding_model,

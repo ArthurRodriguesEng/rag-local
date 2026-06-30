@@ -123,3 +123,26 @@ def test_ingest_allows_empty_documents() -> None:
     assert document.filename == "empty.txt"
     assert len(session.entities) == 1
     assert session.committed is True
+
+
+def test_ingest_many_creates_each_document() -> None:
+    session = FakeSession()
+    embedding_service = FakeEmbeddingService()
+    service = IngestionService(
+        session=session,
+        document_loader=FakeLoader("texto completo"),
+        text_chunker=FakeChunker(["chunk"]),
+        embedding_service=embedding_service,
+    )
+
+    documents = service.ingest_many(
+        ["/tmp/manual_python.txt", "/tmp/notas.md"]
+    )
+
+    assert [document.filename for document in documents] == [
+        "manual_python.txt",
+        "notas.md",
+    ]
+    assert len(session.entities) == 4
+    assert embedding_service.inputs == ["chunk", "chunk"]
+    assert session.committed is True

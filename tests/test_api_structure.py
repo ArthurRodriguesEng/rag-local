@@ -9,5 +9,6 @@ def test_create_app_registers_expected_routes() -> None:
     assert "/health" in routes
     assert "/documents" in routes
     assert "/documents/upload" in routes
+    assert "/documents/upload/batch" in routes
     assert "/documents/{document_id}" in routes
     assert "/chat" in routes

@@ -47,7 +47,10 @@ services:
       - |
         ollama pull bge-m3
         ollama pull qwen3:8b
+        ollama pull gemma3:12b
         ollama pull deepseek-r1:8b
+        ollama pull qwen3:14b
+        ollama pull mistral-small3.2:24b
 
 volumes:
   postgres_data:

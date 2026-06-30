@@ -102,6 +102,16 @@ class IngestionService:
             logger.warning("Erro na ingestão. Rollback executado.")
             raise
 
+    def ingest_many(self, file_paths: list[str]) -> list[Document]:
+        """Ingere múltiplos documentos em sequência."""
+
+        documents = []
+
+        for file_path in file_paths:
+            documents.append(self.ingest(file_path))
+
+        return documents
+
     def _load_chunks(self, file_path: str):
         """Carrega chunks usando a interface estruturada quando disponível."""
 

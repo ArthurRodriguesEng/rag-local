@@ -30,6 +30,7 @@ def test_parser_accepts_ingest_command() -> None:
         [
             "ingest",
             "documents/manual_python.txt",
+            "documents/notas.md",
             "--chunk-size",
             "800",
             "--chunk-overlap",
@@ -40,7 +41,10 @@ def test_parser_accepts_ingest_command() -> None:
     )
 
     assert args.command == "ingest"
-    assert args.file_path == "documents/manual_python.txt"
+    assert args.file_path == [
+        "documents/manual_python.txt",
+        "documents/notas.md",
+    ]
     assert args.chunk_size == 800
     assert args.chunk_overlap == 120
     assert args.embedding_model == "bge-m3"

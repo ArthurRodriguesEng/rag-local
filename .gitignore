@@ -6,5 +6,4 @@ uploads/
 .env
 .env.local
 .env.*.local
-documents/Dissertaýýo_Mestrado_PPEE.pdf
 postgres_help.md

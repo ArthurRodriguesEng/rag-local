@@ -18,6 +18,8 @@ class DocumentSegment:
 class DocumentLoader:
     """Serviço responsável por extrair texto de documentos."""
 
+    TEXT_SUFFIXES = {".txt", ".md", ".markdown"}
+
     def load(self, file_path: str) -> str:
         """Carrega um documento e retorna seu texto."""
 
@@ -26,8 +28,8 @@ class DocumentLoader:
         if not path.exists():
             raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
 
-        if path.suffix.lower() == ".txt":
-            return self._load_txt(path)
+        if path.suffix.lower() in self.TEXT_SUFFIXES:
+            return self._load_text(path)
 
         if path.suffix.lower() == ".pdf":
             return self._load_pdf(path)
@@ -42,16 +44,16 @@ class DocumentLoader:
         if not path.exists():
             raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
 
-        if path.suffix.lower() == ".txt":
-            return self._load_txt_segments(path)
+        if path.suffix.lower() in self.TEXT_SUFFIXES:
+            return self._load_text_segments(path)
 
         if path.suffix.lower() == ".pdf":
             return self._load_pdf_segments(path)
 
         raise ValueError(f"Formato de arquivo não suportado: {path.suffix}")
 
-    def _load_txt(self, path: Path) -> str:
-        """Extrai texto de arquivo TXT."""
+    def _load_text(self, path: Path) -> str:
+        """Extrai texto de arquivo textual em UTF-8."""
 
         return path.read_text(encoding="utf-8")
 
@@ -69,10 +71,10 @@ class DocumentLoader:
 
         return "\n\n".join(text_parts)
 
-    def _load_txt_segments(self, path: Path) -> list[DocumentSegment]:
-        """Extrai texto de TXT como segmento único."""
+    def _load_text_segments(self, path: Path) -> list[DocumentSegment]:
+        """Extrai texto de arquivo textual como segmento único."""
 
-        text = self._load_txt(path)
+        text = self._load_text(path)
 
         if not text.strip():
             return []
