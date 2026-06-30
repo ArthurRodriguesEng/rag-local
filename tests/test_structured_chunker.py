@@ -55,3 +55,68 @@ def test_structured_chunker_uses_natural_overlap() -> None:
     assert "Segunda sentença sobre embeddings" in chunks[0]
     assert "Segunda sentença sobre embeddings" in chunks[1]
     assert all(len(chunk) <= 95 for chunk in chunks)
+
+
+def test_structured_chunker_uses_clean_markdown_headings_as_sections() -> None:
+    chunker = StructuredTextChunker(
+        chunk_size=220,
+        chunk_overlap=40,
+        chunk_min_size=30,
+    )
+    text = (
+        "# Guia de Operação\n\n"
+        "Texto de abertura.\n\n"
+        "```python\n"
+        "# Isto não é seção\n"
+        "print('ok')\n"
+        "```\n\n"
+        "## Passos\n\n"
+        "- Ingerir documentos\n"
+        "- Consultar o RAG\n"
+    )
+
+    chunks = chunker.split_segments(
+        [
+            DocumentSegment(
+                content=text,
+                start_char=0,
+                end_char=len(text),
+            )
+        ]
+    )
+
+    assert [chunk.section for chunk in chunks] == [
+        "Guia de Operação",
+        "Passos",
+    ]
+    assert any("# Isto não é seção" in chunk.content for chunk in chunks)
+
+
+def test_structured_chunker_keeps_markdown_tables_and_lists_together() -> None:
+    chunker = StructuredTextChunker(
+        chunk_size=180,
+        chunk_overlap=40,
+        chunk_min_size=30,
+    )
+    text = (
+        "## Métricas\n\n"
+        "| Modelo | MAE | RMSE |\n"
+        "| --- | ---: | ---: |\n"
+        "| RF | 1.2 | 2.4 |\n"
+        "| XGB | 1.0 | 2.1 |\n\n"
+        "- Primeiro item relevante\n"
+        "- Segundo item relevante\n"
+        "- Terceiro item relevante\n"
+    )
+
+    chunks = chunker.split(text)
+
+    assert any(
+        "| Modelo | MAE | RMSE |" in chunk and "| XGB | 1.0 | 2.1 |" in chunk
+        for chunk in chunks
+    )
+    assert any(
+        "- Primeiro item relevante" in chunk
+        and "- Terceiro item relevante" in chunk
+        for chunk in chunks
+    )

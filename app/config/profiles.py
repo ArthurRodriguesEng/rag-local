@@ -105,10 +105,10 @@ REASONING = RagProfile(
     retrieval=RetrievalProfile(
         limit=3,
         candidate_limit=10,
-        max_context_chars=7000,
+        max_context_chars=14000,
     ),
-    memory_limit=3,
-    memory_max_chars=700,
+    memory_limit=5,
+    memory_max_chars=2000,
     response_mode="analytical",
 )
 

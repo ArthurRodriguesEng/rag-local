@@ -132,13 +132,29 @@ class StructuredTextChunker:
         current_lines = []
         current_start = 0
         cursor = 0
+        fence_marker: str | None = None
 
         for raw_line in text.splitlines(keepends=True):
             line = raw_line.strip()
             line_start = cursor
             cursor += len(raw_line)
 
-            if self._is_section_heading(line):
+            fence = self._markdown_fence_marker(line)
+            if fence_marker is not None:
+                current_lines.append(raw_line)
+
+                if fence == fence_marker:
+                    fence_marker = None
+
+                continue
+
+            if fence is not None:
+                fence_marker = fence
+                current_lines.append(raw_line)
+                continue
+
+            heading_label = self._section_heading_label(line)
+            if heading_label is not None:
                 if current_lines:
                     blocks.append(
                         (
@@ -148,7 +164,7 @@ class StructuredTextChunker:
                         )
                     )
 
-                current_section = line
+                current_section = heading_label
                 current_lines = [raw_line]
                 current_start = line_start
                 continue
@@ -166,17 +182,22 @@ class StructuredTextChunker:
 
         return blocks
 
-    def _is_section_heading(self, line: str) -> bool:
+    def _section_heading_label(self, line: str) -> str | None:
         """Detecta títulos curtos comuns em TXT/PDF sem parser semântico."""
 
         if not line or len(line) > 120:
-            return False
+            return None
 
         if self._is_table_like_line(line):
-            return False
+            return None
+
+        markdown_label = self._markdown_heading_label(line)
+
+        if markdown_label:
+            return markdown_label
 
         heading = bool(
-            line.startswith("#") or re.match(r"^\d+(\.\d+)*\s+\S", line)
+            re.match(r"^\d+(\.\d+)*\s+\S", line)
         )
 
         if not heading and not line.endswith((".", ":", ";", ",")):
@@ -194,7 +215,33 @@ class StructuredTextChunker:
                     len(letters) // 2,
                 )
 
-        return heading
+        return line if heading else None
+
+    def _is_section_heading(self, line: str) -> bool:
+        """Mantém compatibilidade para chamadas/testes diretos."""
+
+        return self._section_heading_label(line) is not None
+
+    def _markdown_heading_label(self, line: str) -> str | None:
+        """Retorna o texto limpo de um título ATX Markdown."""
+
+        match = re.match(r"^(#{1,6})\s+(.+?)\s*#*\s*$", line)
+
+        if not match:
+            return None
+
+        label = match.group(2).strip()
+        return label or None
+
+    def _markdown_fence_marker(self, line: str) -> str | None:
+        """Detecta abertura/fechamento de bloco de código Markdown."""
+
+        match = re.match(r"^(`{3,}|~{3,})", line)
+
+        if not match:
+            return None
+
+        return match.group(1)[0]
 
     def _is_table_like_line(self, line: str) -> bool:
         """Evita tratar cabeçalhos/linhas curtas de tabelas como seções."""
@@ -204,6 +251,9 @@ class StructuredTextChunker:
 
         if re.match(r"^\d+(\.\d+)*\s+\S", line):
             return False
+
+        if self._is_markdown_table_line(line):
+            return True
 
         if len(words) == 1 and upper_line in {"RF", "XGB", "LGBM", "R2"}:
             return True
@@ -219,13 +269,13 @@ class StructuredTextChunker:
         """Divide um bloco em parágrafos e sentenças sem cortes ruins."""
 
         units = []
-        for match in re.finditer(r"\S(?:.*?\S)?(?:\n\s*\n|$)", text, re.DOTALL):
-            paragraph = match.group(0).strip()
+        for block, block_start in self._markdown_blocks(text, base_start):
+            paragraph = block.strip()
 
             if not paragraph:
                 continue
 
-            paragraph_start = base_start + match.start()
+            paragraph_start = block_start + block.find(paragraph)
 
             if len(paragraph) <= self.chunk_size:
                 units.append(
@@ -237,7 +287,10 @@ class StructuredTextChunker:
                 )
                 continue
 
-            units.extend(self._split_sentences(paragraph, paragraph_start))
+            if self._is_line_structured_block(paragraph):
+                units.extend(self._split_lines(paragraph, paragraph_start))
+            else:
+                units.extend(self._split_sentences(paragraph, paragraph_start))
 
         if not units and text.strip():
             stripped = text.strip()
@@ -249,6 +302,179 @@ class StructuredTextChunker:
                     end_char=start + len(stripped),
                 )
             )
+
+        return units
+
+    def _markdown_blocks(
+        self,
+        text: str,
+        base_start: int,
+    ) -> list[tuple[str, int]]:
+        """Divide texto em blocos Markdown sem quebrar listas, tabelas e código."""
+
+        blocks: list[tuple[str, int]] = []
+        current_lines: list[str] = []
+        current_start: int | None = None
+        current_kind: str | None = None
+        fence_marker: str | None = None
+        cursor = 0
+
+        for raw_line in text.splitlines(keepends=True):
+            line = raw_line.strip()
+            line_start = base_start + cursor
+            cursor += len(raw_line)
+
+            fence = self._markdown_fence_marker(line)
+
+            if fence_marker is not None:
+                current_lines.append(raw_line)
+
+                if fence == fence_marker:
+                    self._append_block(blocks, current_lines, current_start)
+                    current_lines = []
+                    current_start = None
+                    current_kind = None
+                    fence_marker = None
+
+                continue
+
+            if fence is not None:
+                self._append_block(blocks, current_lines, current_start)
+                current_lines = [raw_line]
+                current_start = line_start
+                current_kind = "code"
+                fence_marker = fence
+                continue
+
+            if not line:
+                self._append_block(blocks, current_lines, current_start)
+                current_lines = []
+                current_start = None
+                current_kind = None
+                continue
+
+            line_kind = self._markdown_line_kind(raw_line)
+
+            if current_kind == "list" and line_kind == "list_continuation":
+                line_kind = "list"
+
+            if (
+                current_lines
+                and line_kind in {"list", "table"}
+                and current_kind != line_kind
+            ):
+                self._append_block(blocks, current_lines, current_start)
+                current_lines = []
+                current_start = None
+
+            if (
+                current_lines
+                and current_kind in {"list", "table"}
+                and line_kind is None
+            ):
+                self._append_block(blocks, current_lines, current_start)
+                current_lines = []
+                current_start = None
+
+            if current_start is None:
+                current_start = line_start
+
+            current_lines.append(raw_line)
+            current_kind = line_kind or "paragraph"
+
+        self._append_block(blocks, current_lines, current_start)
+
+        return blocks
+
+    def _append_block(
+        self,
+        blocks: list[tuple[str, int]],
+        lines: list[str],
+        start: int | None,
+    ) -> None:
+        """Adiciona bloco textual ignorando separadores vazios."""
+
+        if start is None:
+            return
+
+        block = "".join(lines).strip()
+
+        if block:
+            blocks.append((block, start))
+
+    def _markdown_line_kind(self, raw_line: str) -> str | None:
+        """Classifica linhas Markdown que devem ficar agrupadas."""
+
+        line = raw_line.rstrip("\n")
+        stripped = line.strip()
+
+        if self._is_markdown_table_line(stripped):
+            return "table"
+
+        if re.match(r"^\s{0,3}([-*+]|\d+[.)])\s+\S", line):
+            return "list"
+
+        if re.match(r"^\s{2,}\S", line):
+            return "list_continuation"
+
+        return None
+
+    def _is_markdown_table_line(self, line: str) -> bool:
+        """Detecta linhas de tabela pipe Markdown."""
+
+        if "|" not in line:
+            return False
+
+        stripped = line.strip()
+
+        if re.match(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$", stripped):
+            return True
+
+        return stripped.count("|") >= 2
+
+    def _is_line_structured_block(self, text: str) -> bool:
+        """Identifica blocos longos que devem ser quebrados por linha."""
+
+        lines = [line for line in text.splitlines() if line.strip()]
+
+        if not lines:
+            return False
+
+        structured = sum(
+            1
+            for line in lines
+            if self._markdown_line_kind(line) in {"list", "table"}
+        )
+
+        return structured >= max(2, len(lines) // 2)
+
+    def _split_lines(self, text: str, start_char: int) -> list[_TextUnit]:
+        """Divide listas/tabelas longas preservando linhas inteiras."""
+
+        units = []
+        cursor = 0
+
+        for raw_line in text.splitlines(keepends=True):
+            line = raw_line.strip()
+
+            if not line:
+                cursor += len(raw_line)
+                continue
+
+            line_start = start_char + cursor + raw_line.find(line)
+
+            if len(line) <= self.chunk_size:
+                units.append(
+                    _TextUnit(
+                        content=line,
+                        start_char=line_start,
+                        end_char=line_start + len(line),
+                    )
+                )
+            else:
+                units.extend(self._hard_split(line, line_start))
+
+            cursor += len(raw_line)
 
         return units
 

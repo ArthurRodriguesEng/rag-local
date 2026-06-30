@@ -2,7 +2,7 @@
 
 RAG local em Python para ingerir documentos, gerar embeddings com Ollama,
 armazenar vetores no PostgreSQL com pgvector e, depois, responder perguntas
-com busca vetorial e LLM local.
+com busca híbrida e LLM local.
 
 ## Stack
 
@@ -12,8 +12,30 @@ com busca vetorial e LLM local.
 - Docker Compose
 - Ollama
 - Modelo de embedding: `bge-m3`
-- Modelo de chat: `llama3.2:3b`
-- Modelo de chat balanceado: `qwen2.5:7b-instruct`
+- Modelos de chat: `llama3.2:3b`, `qwen3:8b`, `deepseek-r1:8b`
+
+## Ambiente local de referência
+
+Este projeto está calibrado no ambiente local abaixo:
+
+```text
+CPU: 13th Gen Intel(R) Core(TM) i7-13620H
+CPU threads: 16
+RAM: 30 GiB
+GPU: NVIDIA GeForce RTX 4050 Laptop GPU
+VRAM: 6141 MiB
+Driver NVIDIA: 595.71.05
+Ollama no Docker: CUDA detectado via runtime nvidia
+```
+
+Observações práticas neste hardware:
+
+- `llama3.2:3b` cabe bem na GPU e é o perfil mais responsivo.
+- `qwen3:8b` e `deepseek-r1:8b` ficam perto do limite de VRAM; o Ollama pode
+  usar offload parcial CPU/GPU.
+- Se `ollama ps` mostrar `100% CPU`, o container subiu sem aceleração NVIDIA.
+- Para modelos 8B em CPU ou offload parcial, mantenha `CHAT_TIMEOUT_SECONDS`
+  em `240` ou mais.
 
 ## GPU NVIDIA no Ollama
 
@@ -25,7 +47,7 @@ O host precisa ter:
 
 - driver NVIDIA instalado;
 - NVIDIA Container Toolkit instalado;
-- Docker com suporte a `--gpus all`.
+- Docker com runtime `nvidia` registrado.
 
 Valide a GPU no host:
 
@@ -33,10 +55,10 @@ Valide a GPU no host:
 nvidia-smi
 ```
 
-Valide a GPU pelo Docker:
+Depois de subir o Ollama, valide a GPU dentro do container:
 
 ```bash
-docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+docker exec rag-ollama nvidia-smi
 ```
 
 Suba o projeto usando GPU NVIDIA no Ollama:
@@ -50,6 +72,18 @@ Para confirmar que o Ollama detectou aceleração, acompanhe os logs:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.nvidia.yml logs -f ollama
+```
+
+Também confirme o processador usado pelo modelo:
+
+```bash
+docker exec rag-ollama ollama ps
+```
+
+Resultado esperado para modelo totalmente na GPU:
+
+```text
+llama3.2:3b    ...    100% GPU
 ```
 
 Se o host não tiver NVIDIA Container Toolkit, use apenas:
@@ -70,7 +104,7 @@ Diagrama do fluxo: `docs/fluxo-rag-local.excalidraw`.
 Fluxo:
 
 ```text
-arquivo -> DocumentLoader -> RecursiveTextChunker -> EmbeddingService
+arquivo -> DocumentLoader -> StructuredTextChunker -> EmbeddingService
         -> DocumentRepository -> ChunkRepository -> commit
 ```
 
@@ -78,7 +112,7 @@ O `IngestionService` é a camada que coordena esse pipeline:
 
 1. Recebe o caminho do arquivo.
 2. Extrai o texto com `DocumentLoader`.
-3. Divide o texto com `RecursiveTextChunker`.
+3. Divide o texto com `StructuredTextChunker`.
 4. Cria um registro em `documents`.
 5. Gera um embedding para cada chunk.
 6. Cria os registros em `chunks`.
@@ -88,19 +122,19 @@ O `IngestionService` é a camada que coordena esse pipeline:
 Esse controle de transação evita salvar um documento pela metade. Se a geração
 de embedding falhar no meio do processo, nada daquele documento é persistido.
 
-Depois da ingestão, o `ChunkRepository.search_similar()` recebe o embedding de
-uma pergunta e ordena os chunks pela distância cosseno do pgvector:
+Depois da ingestão, o `ChunkRepository.search_hybrid()` combina embedding da
+pergunta, busca lexical e sobreposição de termos para ordenar os chunks:
 
 ```text
-pergunta -> EmbeddingService -> ChunkRepository.search_similar()
-         -> chunks mais relevantes
+pergunta -> EmbeddingService -> ChunkRepository.search_hybrid()
+         -> busca vetorial + lexical -> chunks mais relevantes
 ```
 
 Com os chunks encontrados, o `RagService` monta um prompt com contexto e chama
-o `ChatService`, que usa o modelo `llama3.2:3b` no Ollama:
+o `ChatService`, que usa o modelo definido pelo perfil selecionado:
 
 ```text
-pergunta -> histórico -> embedding -> busca vetorial -> contexto
+pergunta -> histórico -> embedding -> busca híbrida -> contexto
          -> modelo de chat -> resposta com fontes
 ```
 
@@ -150,7 +184,8 @@ modelos usados pelo projeto no Ollama:
 
 - `bge-m3`
 - `llama3.2:3b`
-- `qwen2.5:7b-instruct`
+- `qwen3:8b`
+- `deepseek-r1:8b`
 
 Acompanhe o download inicial com:
 

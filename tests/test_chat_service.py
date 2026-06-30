@@ -57,7 +57,7 @@ def test_generate_calls_ollama_chat(monkeypatch) -> None:
     assert calls[0]["json"]["stream"] is False
     assert calls[0]["json"]["options"]["temperature"] == 0.0
     assert calls[0]["json"]["options"]["top_p"] == 0.3
-    assert calls[0]["timeout"] == 120
+    assert calls[0]["timeout"] == service.timeout_seconds
 
 
 def test_ollama_http_error_includes_response_body(monkeypatch) -> None:
