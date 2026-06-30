@@ -114,6 +114,21 @@ def test_parser_accepts_chat_command_with_profile() -> None:
     assert args.memory_limit == 4
 
 
+def test_chat_error_help_for_killed_model_suggests_lighter_run(capsys) -> None:
+    cli._print_chat_error_help(
+        error_message="llama-server process has terminated: signal: killed",
+        selected_chat_model="deepseek-r1:8b",
+        profile_name="reasoning",
+    )
+
+    output = capsys.readouterr().out
+
+    assert "falta de memória" in output
+    assert "--profile fast --limit 2" in output
+    assert "--chat-model qwen3:8b --limit 2" in output
+    assert "ollama pull deepseek-r1:8b" not in output
+
+
 def test_parser_accepts_reset_db_command() -> None:
     parser = cli.build_parser()
 

@@ -277,12 +277,11 @@ def ask_question(
         except ChatServiceError as error:
             session.rollback()
             logger.warning(str(error))
-
-            print("\nVerifique o modelo local no Ollama:\n")
-            print("docker exec -it rag-ollama ollama list")
-            print(f"docker exec -it rag-ollama ollama pull {selected_chat_model}")
-            print("\nSe o prompt estiver grande para o modelo, tente reduzir o contexto:")
-            print('python -m app.cli ask "sua pergunta" --limit 3')
+            _print_chat_error_help(
+                error_message=str(error),
+                selected_chat_model=selected_chat_model,
+                profile_name=profile.name,
+            )
 
             return None
 
@@ -300,6 +299,45 @@ def ask_question(
     finally:
         logger.debug("Fechando sessão do banco após pergunta.")
         session.close()
+
+
+def _print_chat_error_help(
+    error_message: str,
+    selected_chat_model: str,
+    profile_name: str,
+) -> None:
+    """Imprime orientação operacional para falhas do provedor de chat."""
+
+    normalized_error = error_message.lower()
+    killed_process = (
+        "signal: killed" in normalized_error
+        or "process has terminated" in normalized_error
+    )
+
+    if killed_process:
+        print(
+            "\nO processo do modelo foi encerrado pelo sistema. "
+            "Isso geralmente indica falta de memória ou contexto grande demais."
+        )
+        print("\nTente reduzir o custo da conversa:\n")
+        print("python -m app.cli chat --profile fast --limit 2 --response-mode concise")
+        print(
+            "python -m app.cli chat "
+            f"--profile {profile_name} --chat-model qwen3:8b --limit 2"
+        )
+        print('\nPara uma pergunta única, use:')
+        print('python -m app.cli ask "sua pergunta" --profile fast --limit 2')
+        print(
+            "\nSe estiver usando Docker Desktop, aumente a memória disponível "
+            "para o Docker antes de usar perfis mais pesados."
+        )
+        return
+
+    print("\nVerifique o modelo local no Ollama:\n")
+    print("docker exec -it rag-ollama ollama list")
+    print(f"docker exec -it rag-ollama ollama pull {selected_chat_model}")
+    print("\nSe o prompt estiver grande para o modelo, tente reduzir o contexto:")
+    print('python -m app.cli ask "sua pergunta" --limit 3')
 
 
 def print_sources(chunks) -> None:
